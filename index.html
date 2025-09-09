@@ -2,144 +2,95 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Escáner QR para Empleados</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Escáner QR</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <style>
     body {
-      background-color: #f3f4f6;
-      font-family: 'Inter', sans-serif;
-    }
-    .container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      margin: 20px;
       text-align: center;
     }
-    .card {
-      background-color: white;
-      padding: 2.5rem;
-      border-radius: 1.5rem;
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-      max-width: 400px;
-      width: 90%;
-      display: flex;
-      flex-direction: column;
-      gap: 1.5rem;
+    #qr-reader {
+      width: 300px;
+      margin: auto;
     }
-    #reader {
-      width: 100%;
+    .camera-list {
+      margin-top: 20px;
+      text-align: left;
+      display: inline-block;
     }
-    #output {
-      margin-top: 1.5rem;
-      padding: 1.5rem;
-      background-color: #f9fafb;
-      border-radius: 1rem;
-      border: 1px dashed #e5e7eb;
-      transition: all 0.3s ease-in-out;
+    .camera-item {
+      font-size: 14px;
+      margin-bottom: 5px;
+      padding: 4px;
+      border-bottom: 1px solid #ccc;
     }
-    .success-message {
-      background-color: #d1fae5;
-      color: #065f46;
+    #camera-info {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #444;
     }
     .error-message {
-      background-color: #fee2e2;
-      color: #b91c1c;
-    }
-    .employee-data {
-      text-align: left;
-    }
-    .employee-data h3 {
-      font-weight: 700;
-      font-size: 1.5rem;
-      color: #111827;
-    }
-    .employee-data p {
-      margin-top: 0.5rem;
-      color: #4b5563;
-    }
-    .button {
-      padding: 0.75rem 1.5rem;
-      font-weight: 600;
-      border-radius: 0.75rem;
-      transition: background-color 0.3s ease-in-out, transform 0.2s ease-in-out;
-      cursor: pointer;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      border: none;
-    }
-    .button-primary {
-      background-color: #2563eb;
-      color: white;
-    }
-    .button-primary:hover {
-      background-color: #1d4ed8;
-      transform: translateY(-2px);
+      color: red;
+      margin-top: 15px;
     }
   </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+<body>
+  <h2>Escáner de Código QR</h2>
+  <button id="scanButton">Escanear Ficha</button>
 
-  <div class="card">
-    <h1 class="text-2xl font-bold text-gray-900">Escáner de QR</h1>
-    <p class="text-gray-500">Haz clic para escanear tu código de ficha.</p>
-    
-    <div id="qr-reader" style="display:none;"></div>
-    <p id="camera-info" class="text-sm text-gray-500 mt-2 hidden"></p>
-    
-    <button id="scan-button" class="button button-primary">
-      Escanear Ficha
-    </button>
-
-    <div id="result-message" class="hidden"></div>
-  </div>
+  <div id="qr-reader" style="display:none; margin-top:20px;"></div>
+  <p id="camera-info" class="hidden"></p>
+  <div id="camera-list" class="camera-list"></div>
+  <p id="resultMessage" class="hidden"></p>
 
   <script>
+    const scanButton = document.getElementById("scanButton");
     const qrCode = document.getElementById("qr-reader");
-    const scanButton = document.getElementById("scan-button");
-    const resultMessage = document.getElementById("result-message");
-    const cameraInfo = document.getElementById("camera-info");
-
-    const employeeData = {
-      'a3f4b2c9d1e6f7089b2c4d5e6f7a8b1c': { nombre: 'JORGE NAVARRO', puesto: 'SUPERVISOR', ficha: 456 },
-      '9f8e7d6c5b4a39281716f0e1d2c3b4f0': { nombre: 'VICTOR GARCIA', puesto: 'SUPERVISOR', ficha: 2119 },
-      '0123456789abcdef0123456789abcdef': { nombre: 'JOSE DOLORES MF270', puesto: 'SUPERVISOR', ficha: 548 },
-      'fedcba9876543210fedcba9876543210': { nombre: 'FERNANDO NAJERA', puesto: 'TEAM LEADER', ficha: 1628 },
-      '1a2b3c4d5e6f708192a3b4c5d6e7f809': { nombre: 'JESUS SEGURA', puesto: 'SUPERVISOR', ficha: 1629 },
-      'c0ffee1234567890deadbeefcafebabe': { nombre: 'JUAN MONCAYO', puesto: 'SUPERVISOR', ficha: 1896 },
-      '89ab67cd45ef0123a1b2c3d4e5f60718': { nombre: 'CARLOS NAVARRO', puesto: 'SUPERVISOR', ficha: 1836 },
-      '7e6d5c4b3a2918171625344556677889': { nombre: 'CARLOS GRIMALDO', puesto: 'SUPERVISOR', ficha: 894 },
-      'deadc0debeadfeedcafebabefaceb00c': { nombre: 'RICARDO ELI', puesto: 'SUPERVISOR', ficha: 1361 },
-      'ab12cd34ef56ab78cd90ef12ab34cd56': { nombre: 'ABDIEL GUTIERREZ', puesto: 'SUPERVISOR', ficha: 2450 },
-      '33445566778899aabbccddeeff001122': { nombre: 'Jose Luis Valdez cuellar', puesto: 'SUPERVISOR', ficha: 461 },
-      '5566778899aabbccddeeff0011223344': { nombre: 'Jose Luis Valdez menchaca', puesto: 'SUPERVISOR', ficha: 205 }
-    };
+    const resultMessage = document.getElementById("resultMessage");
+    const camInfo = document.getElementById("camera-info");
+    const camList = document.getElementById("camera-list");
 
     let html5QrCode = null;
+
+    function onScanSuccess(decodedText, decodedResult) {
+      resultMessage.textContent = "Código detectado: " + decodedText;
+      resultMessage.className = "block";
+    }
+
+    function onScanFailure(error) {
+      console.warn("Fallo al escanear:", error);
+    }
 
     scanButton.addEventListener("click", () => {
       if (html5QrCode && html5QrCode._isScanning) {
         html5QrCode.stop().then(() => {
           qrCode.style.display = "none";
           scanButton.textContent = "Escanear Ficha";
-          resultMessage.classList.add("hidden");
-          cameraInfo.classList.add("hidden");
+          resultMessage.className = "hidden";
+          camInfo.textContent = "";
+          camList.innerHTML = "";
         });
       } else {
         html5QrCode = new Html5Qrcode("qr-reader");
 
         Html5Qrcode.getCameras().then(cameras => {
           if (cameras && cameras.length) {
+            // Mostrar todas las cámaras detectadas
+            camList.innerHTML = "<h3>Cámaras detectadas:</h3>";
+            cameras.forEach((cam, index) => {
+              const item = document.createElement("div");
+              item.className = "camera-item";
+              item.textContent = `${index + 1}. ID: ${cam.id} | Label: ${cam.label}`;
+              camList.appendChild(item);
+            });
+
             // Buscar cámara trasera
             let backCamera = cameras.find(cam => cam.label.toLowerCase().includes("back"));
-            let selectedCam = backCamera ? backCamera : cameras[0]; 
-            let cameraId = selectedCam.id;
+            let cameraId = backCamera ? backCamera.id : cameras[0].id;
 
-            // Mostrar info de cámara
-            cameraInfo.textContent = `Usando cámara: ${selectedCam.label || cameraId}`;
-            cameraInfo.classList.remove("hidden");
+            camInfo.textContent = `Usando cámara: ${cameraId}`;
 
             qrCode.style.display = "block";
             scanButton.textContent = "Detener Escáner";
@@ -148,64 +99,20 @@
             html5QrCode.start(cameraId, config, onScanSuccess, onScanFailure)
               .catch(err => {
                 console.error("Error al iniciar cámara:", err);
-                resultMessage.className = "block mt-6 p-4 rounded-xl text-center error-message";
-                resultMessage.innerHTML = "No se pudo iniciar la cámara.";
+                resultMessage.className = "error-message";
+                resultMessage.textContent = "No se pudo iniciar la cámara.";
                 qrCode.style.display = "none";
                 scanButton.textContent = "Escanear Ficha";
-                cameraInfo.classList.add("hidden");
               });
+          } else {
+            resultMessage.className = "error-message";
+            resultMessage.textContent = "No se detectaron cámaras en este dispositivo.";
           }
         }).catch(err => {
           console.error("Error obteniendo cámaras:", err);
         });
       }
     });
-
-    function onScanSuccess(decodedText) {
-      console.log(`Code matched = ${decodedText}`);
-
-      const regex = /[?&]id=([^&]+)/;
-      const match = decodedText.match(regex);
-      
-      let id = null;
-      if (match && match[1]) {
-        id = match[1];
-      } else {
-        id = decodedText.trim();
-      }
-
-      if (employeeData[id]) {
-        const empleado = employeeData[id];
-        resultMessage.className = 'block mt-6 p-4 rounded-xl text-center success-message';
-        resultMessage.innerHTML = `
-          <div class="employee-data">
-            <h3 class="text-xl font-semibold">¡Bienvenido!</h3>
-            <p class="mt-2 text-gray-700">Has iniciado sesión como:</p>
-            <ul class="mt-2 text-left list-disc list-inside">
-              <li><strong>Nombre:</strong> ${empleado.nombre}</li>
-              <li><strong>Ficha:</strong> ${empleado.ficha}</li>
-              <li><strong>Puesto:</strong> ${empleado.puesto}</li>
-            </ul>
-          </div>
-        `;
-      } else {
-        resultMessage.className = 'block mt-6 p-4 rounded-xl text-center error-message';
-        resultMessage.innerHTML = 'Identificador no válido o no encontrado. Por favor, escanea tu ficha de nuevo.';
-      }
-
-      html5QrCode.stop().then(() => {
-        qrCode.style.display = 'none';
-        scanButton.textContent = 'Escanear Ficha';
-        resultMessage.classList.remove('hidden');
-        cameraInfo.classList.add("hidden");
-      }).catch(err => {
-        console.error("Failed to stop scanner after scan:", err);
-      });
-    }
-
-    function onScanFailure(error) {
-      // No hacemos nada en fallos intermedios
-    }
   </script>
 </body>
 </html>
