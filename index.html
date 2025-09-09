@@ -11,14 +11,6 @@
             background-color: #f3f4f6;
             font-family: 'Inter', sans-serif;
         }
-        .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            text-align: center;
-        }
         .card {
             background-color: white;
             padding: 2.5rem;
@@ -30,16 +22,8 @@
             flex-direction: column;
             gap: 1.5rem;
         }
-        #reader {
+        #qr-reader {
             width: 100%;
-        }
-        #output {
-            margin-top: 1.5rem;
-            padding: 1.5rem;
-            background-color: #f9fafb;
-            border-radius: 1rem;
-            border: 1px dashed #e5e7eb;
-            transition: all 0.3s ease-in-out;
         }
         .success-message {
             background-color: #d1fae5;
@@ -67,7 +51,6 @@
             border-radius: 0.75rem;
             transition: background-color 0.3s ease-in-out, transform 0.2s ease-in-out;
             cursor: pointer;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             border: none;
         }
         .button-primary {
@@ -86,12 +69,18 @@
         <h1 class="text-2xl font-bold text-gray-900">Escáner de QR</h1>
         <p class="text-gray-500">Haz clic para escanear tu código de ficha.</p>
         
+        <!-- Contenedor del escáner -->
         <div id="qr-reader" style="display: none;"></div>
+
+        <!-- Selector de cámara -->
+        <select id="camera-select" class="hidden border rounded-lg p-2"></select>
         
+        <!-- Botón de escaneo -->
         <button id="scan-button" class="button button-primary">
             Escanear Ficha
         </button>
 
+        <!-- Resultado -->
         <div id="result-message" class="hidden"></div>
     </div>
 
@@ -99,9 +88,9 @@
         const qrCode = document.getElementById('qr-reader');
         const scanButton = document.getElementById('scan-button');
         const resultMessage = document.getElementById('result-message');
-        const cardElement = document.querySelector('.card');
+        const cameraSelect = document.getElementById('camera-select');
 
-        // Employee data. This replaces the database for this simple prototype.
+        // Base de datos ficticia de empleados
         const employeeData = {
             'a3f4b2c9d1e6f7089b2c4d5e6f7a8b1c': { nombre: 'JORGE NAVARRO', puesto: 'SUPERVISOR', ficha: 456 },
             '9f8e7d6c5b4a39281716f0e1d2c3b4f0': { nombre: 'VICTOR GARCIA', puesto: 'SUPERVISOR', ficha: 2119 },
@@ -119,50 +108,66 @@
 
         let html5QrCode = null;
 
+        // Escucha el botón de escaneo
         scanButton.addEventListener('click', () => {
-            if (html5QrCode && html5QrCode.isScanning) {
-                // If it's scanning, stop the scanner and reset the UI.
+            if (html5QrCode && html5QrCode._isScanning) {
                 html5QrCode.stop().then(() => {
                     qrCode.style.display = 'none';
+                    cameraSelect.classList.add('hidden');
                     scanButton.textContent = 'Escanear Ficha';
                     resultMessage.classList.add('hidden');
-                    console.log('QR Code scanning stopped.');
-                }).catch(err => {
-                    console.error('Failed to stop the QR code scanner:', err);
                 });
             } else {
-                // If it's not scanning, start the scanner.
-                html55QrCode = new Html5Qrcode("qr-reader");
-                qrCode.style.display = 'block';
-                scanButton.textContent = 'Detener Escáner';
-                resultMessage.classList.add('hidden');
-                
-                const config = { fps: 10, qrbox: 250 };
-                html55QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
-                    .catch(err => {
-                        console.error(`Error al iniciar el escáner: ${err}`);
-                        resultMessage.className = 'block mt-6 p-4 rounded-xl text-center error-message';
-                        resultMessage.innerHTML = 'Error al acceder a la cámara. Asegúrate de dar los permisos.';
-                        qrCode.style.display = 'none';
-                        scanButton.textContent = 'Escanear Ficha';
-                    });
+                Html5Qrcode.getCameras().then(devices => {
+                    if (devices && devices.length) {
+                        // Mostrar selector de cámaras
+                        cameraSelect.innerHTML = "";
+                        devices.forEach(device => {
+                            const option = document.createElement("option");
+                            option.value = device.id;
+                            option.text = device.label || `Cámara ${device.id}`;
+                            cameraSelect.appendChild(option);
+                        });
+                        cameraSelect.classList.remove('hidden');
+
+                        // Usar la cámara seleccionada
+                        const cameraId = cameraSelect.value;
+                        html5QrCode = new Html5Qrcode("qr-reader");
+                        qrCode.style.display = 'block';
+                        scanButton.textContent = 'Detener Escáner';
+
+                        const config = { fps: 10, qrbox: 250 };
+                        html5QrCode.start({ deviceId: { exact: cameraId } }, config, onScanSuccess, onScanFailure)
+                            .catch(err => {
+                                console.error("Error al iniciar el escáner:", err);
+                                resultMessage.className = 'block mt-6 p-4 rounded-xl text-center error-message';
+                                resultMessage.innerHTML = 'Error al acceder a la cámara. Asegúrate de dar los permisos.';
+                                qrCode.style.display = 'none';
+                                scanButton.textContent = 'Escanear Ficha';
+                            });
+
+                        // Si cambias la cámara en el select, reinicia el escáner
+                        cameraSelect.addEventListener('change', () => {
+                            html5QrCode.stop().then(() => {
+                                html5QrCode.start(
+                                    { deviceId: { exact: cameraSelect.value } },
+                                    config,
+                                    onScanSuccess,
+                                    onScanFailure
+                                );
+                            });
+                        });
+                    }
+                }).catch(err => {
+                    console.error("No se pudieron obtener las cámaras:", err);
+                });
             }
         });
 
         function onScanSuccess(decodedText) {
-            console.log(`Code matched = ${decodedText}`);
-
-            // This regular expression captures the 'id' parameter from the URL.
             const regex = /[?&]id=([^&]+)/;
             const match = decodedText.match(regex);
-            
-            let id = null;
-            if (match && match[1]) {
-                id = match[1];
-            } else {
-                // If the QR doesn't contain a URL with an ID, check if it's just the ID string itself.
-                id = decodedText.trim();
-            }
+            let id = match && match[1] ? match[1] : decodedText.trim();
 
             if (employeeData[id]) {
                 const empleado = employeeData[id];
@@ -183,20 +188,17 @@
                 resultMessage.innerHTML = 'Identificador no válido o no encontrado. Por favor, escanea tu ficha de nuevo.';
             }
 
-            // Stop the scanner after a successful or failed scan.
-            html55QrCode.stop().then(() => {
+            // Detener después de leer un QR
+            html5QrCode.stop().then(() => {
                 qrCode.style.display = 'none';
                 scanButton.textContent = 'Escanear Ficha';
                 resultMessage.classList.remove('hidden');
-            }).catch(err => {
-                console.error("Failed to stop scanner after scan:", err);
             });
         }
 
         function onScanFailure(error) {
-            // No action needed on failure (e.g., no QR code in view).
+            // Aquí podrías mostrar un log, pero no es necesario
         }
-
     </script>
 </body>
 </html>
